@@ -1,3 +1,6 @@
 # nxarray
 
-This package adds NeXus input/output capability to xarray.
+xarray extension for NeXus input/output.
+
+nexus.NXentry <-> ds = xarray.Dataset
+nexus.NXdata <-> dr = xarray.DataArray
