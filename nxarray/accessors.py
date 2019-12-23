@@ -26,7 +26,7 @@ class DataArray:
         nxdata = nx.NXdata()
 
         ## Add signal attribute
-        signal_name = self._datarr.name if self._datarr.name != '' else 'signal'
+        signal_name = self._datarr.name if self._datarr.name != None else 'signal'
         nxdata.nxsignal=nx.NXfield(self._datarr.values, name=signal_name)
 
         ## Add axes attribute
@@ -44,7 +44,7 @@ class DataArray:
 
         return nxdata
 
-    def save(self, filename):
+    def save(self, filename, **kwargs):
         ''' Save xarray DataArray to NeXus file
         
         Arguments:
@@ -64,7 +64,7 @@ class DataArray:
         nxdata = self._datarr.nxr.to_nxdata()
 
         ## Save to file
-        nxdata.save(filename)
+        nxdata.save(filename, **kwargs)
 
 @xr.register_dataset_accessor("nxr")
 class Dataset:
@@ -95,7 +95,7 @@ class Dataset:
 
         return nxentry
 
-    def save(self, filename):
+    def save(self, filename, **kwargs):
         ''' Save xarray Dataset to NeXus file
         
         Arguments:
@@ -115,4 +115,4 @@ class Dataset:
         nxentry = self._datset.nxr.to_nxentry()
 
         ## Save to file
-        nxentry.save(filename)
+        nxentry.save(filename, **kwargs)
