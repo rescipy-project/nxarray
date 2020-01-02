@@ -35,11 +35,8 @@ def to_datarr(nxdata):
     dims = nxdata.attrs["axes"]
 
     ## Add NXdata and NXsignal attributes to the DataArray
-    attrs = {**nxdata.attrs, **nxdata.nxsignal.attrs}
-    # Remove some attributes specific to NXdata
-    for k in ["signal", "axes"] + ["{}_indices".format(a) for a in nxdata.nxaxes]:
-        if k in attrs:
-            del attrs[k]
+    attrs = {**_get_attrs(nxdata),
+             **_get_attrs(nxdata.nxsignal)}
 
     # Create the xarray DataArray
     datarr = xr.DataArray(data,
@@ -79,13 +76,24 @@ def to_datset(nxentry):
             ds[nxname] = to_datarr(nxdata)
 
     ## Add NXentry attributes to the Dataset
-    attrs = nxentry.attrs
-    # Remove any attribute specific to NXentry
-    for k in ["default", ]:
-        if k in attrs:
-            del attrs[k]
+    attrs = _get_attrs(nxentry)
 
     return ds
+
+def _get_attrs(nxfield):
+    ''' Convert dictionary of NXattr to a common dictionary
+    '''
+
+    # Initialize attributes dictionary
+    attrs = {}
+
+    # Loop over NXattr dictionary
+    # skipping some attributes specific to NXfield
+    for k,v in nxfield.attrs.items():
+        if k not in ["signal", "axes", "default"] + ["{}_indices".format(a) for a in nxfield.nxaxes]:
+            attrs[k] = v.nxvalue
+
+    return attrs
 
 def load(filename):
     ''' Load a NeXus file to an xarray Dataset
