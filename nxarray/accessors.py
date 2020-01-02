@@ -23,32 +23,45 @@ class DataArray:
         '''
 
         ## Initialize NXdata
-        nxdata = nx.NXdata()
+        nxname = self._datarr.name if self._datarr.name != None else 'data'
+        nxdata = nx.NXdata(name=nxname)
 
-        ## Add signal attribute
+        ## Add dataset to NXdata
+        self._add_to(nxdata)
+
+        return nxdata
+
+    def _add_to(self, nxdata):
+        ''' Add DataArray to NXdata as signal with axes
+        '''
+
+        ## Add signal
+        self._add_signal(nxdata)
+
+        ## Add axes
+        self._add_axes(nxdata)
+
+        ## Add DataArray attributes to signal
+        self._add_attrs(nxdata.nxsignal)
+
+    def _add_signal(self, nxdata):
         signal_name = self._datarr.name if self._datarr.name != None else 'signal'
-        nxdata.nxsignal=nx.NXfield(self._datarr.values, name=signal_name)
-
-        ## Add axes attribute
-        for axes_name in self._datarr.coords:
-            axes = self._datarr.coords[axes_name].values
-            nxdata.nxaxes=nx.NXfield(axes, name=axes_name)
+        nxdata.nxsignal = nx.NXfield(self._datarr.values, name=signal_name)
+    
+    def _add_axes(self, nxdata):
+        _add_axes(self._datarr.coords, nxdata)
         # Overwrite the list of all xarray coordinates with just xarray dimensions
         nxdata.attrs["axes"] = list(self._datarr.dims)
 
-        ## Add metadata
-        for k,v in self._datarr.attrs.items():
-            # Avoid any overwriting of specific NXdata attributes
-            if k not in [signal_name, "axes"] + ["{}_indices".format(a) for a in nxdata.nxaxes]:
-                nxdata.attrs[k] = v
-
-        return nxdata
+    def _add_attrs(self, nxsignal):
+        _add_attrs(self._datarr.attrs, nxsignal)
 
     def save(self, filename, **kwargs):
         ''' Save xarray DataArray to NeXus file
         
         Arguments:
             filename: file path to .nx file
+            **kwargs: any optional argument accepted by NXdata.save() method
         
         Returns:
             nothing
@@ -93,6 +106,9 @@ class Dataset:
         for name, datarr in self._datset.data_vars.items():
             nxentry[name] = datarr.nxr.to_nxdata()
 
+        ## Add dataset attributes to NXentry
+        _add_attrs(self._datset.attrs, nxentry)
+
         return nxentry
 
     def save(self, filename, **kwargs):
@@ -100,6 +116,7 @@ class Dataset:
         
         Arguments:
             filename: file path to .nx file
+            **kwargs: any optional argument accepted by NXentry.save() method
         
         Returns:
             nothing
@@ -116,3 +133,14 @@ class Dataset:
 
         ## Save to file
         nxentry.save(filename, **kwargs)
+
+def _add_axes(coords, nxdata):
+    for coord_name in coords:
+        axes = coords[coord_name].values
+        nxdata.nxaxes = nx.NXfield(axes, name=coord_name)
+
+def _add_attrs(attrs, nxfield):
+    for k,v in attrs.items():
+        # Avoid any overwriting of specific NXfield attributes
+        if k not in ["signal", "axes", "default"] + ["{}_indices".format(a) for a in nxfield.nxaxes]:
+            nxfield.attrs[k] = v
