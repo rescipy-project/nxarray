@@ -43,3 +43,4 @@ nxr.load() function:
 ```
     ds = nxr.load(path/to/file.nx)
 ```
+See the docstring help for more detailed information.

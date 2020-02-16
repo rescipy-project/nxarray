@@ -2,7 +2,7 @@ import nexusformat.nexus as nx
 import xarray as xr
 
 @xr.register_dataarray_accessor("nxr")
-class DataArray:
+class _nxrDataArray:
     '''nxarray class extending xarray DataArray
     '''
 
@@ -80,7 +80,7 @@ class DataArray:
         nxdata.save(filename, **kwargs)
 
 @xr.register_dataset_accessor("nxr")
-class Dataset:
+class _nxrDataset:
     '''nxarray class extending xarray Dataset
     '''
 

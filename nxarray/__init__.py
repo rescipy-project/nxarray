@@ -1,5 +1,3 @@
-from ._version import __version__
+from ._core import load, to_datarr, to_datset
 
-from .core import load, to_datarr, to_datset
-
-from .accessors import DataArray, Dataset
+from ._accessors import _nxrDataArray, _nxrDataset
