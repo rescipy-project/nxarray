@@ -13,7 +13,7 @@ setuptools.setup(
     description="xarray extension for NeXus input/output.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://gitlab.com/nxarray/nxarray",
+    url="https://github.com/nxarray/nxarray",
     license="MIT",
     packages=setuptools.find_packages(),
     install_requires=[
