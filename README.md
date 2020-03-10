@@ -2,9 +2,11 @@
 
 xarray extension for NeXus input/output.
 
+See the [documentation](https://nxarray.readthedocs.io/en/latest/) for detailed information on installation and usage of ``nxarray``.
+
 Introduction
 ============
-nxarray extends xarray DatArrays and Datasets with a high-level
+``nxarray`` extends xarray DataArrays and Datasets with a high-level
 python interface for NeXus file input and output.
 
 Installation
@@ -43,4 +45,3 @@ nxr.load() function:
 ```
     ds = nxr.load(path/to/file.nx)
 ```
-See the docstring help for more detailed information.

@@ -23,7 +23,7 @@ class _nxrDataArray:
         '''
 
         ## Initialize NXdata
-        nxname = self._datarr.name if self._datarr.name != None else 'data'
+        nxname = self._datarr.name if self._datarr.name != None else "data"
         nxdata = nx.NXdata(name=nxname)
 
         ## Add dataset to NXdata
@@ -45,7 +45,7 @@ class _nxrDataArray:
         self._add_attrs(nxdata.nxsignal)
 
     def _add_signal(self, nxdata):
-        signal_name = self._datarr.name if self._datarr.name != None else 'signal'
+        signal_name = self._datarr.name if self._datarr.name != None else "signal"
         nxdata.nxsignal = nx.NXfield(self._datarr.values, name=signal_name)
     
     def _add_axes(self, nxdata):
