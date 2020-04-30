@@ -2,16 +2,19 @@
 nxarray
 =======
 
-xarray extension for NeXus input/output.
+**xarray extension for NeXus input/output.**
 
-``nxarray`` extends xarray DataArrays and Datasets with a high-level
-python interface for NeXus file input and output.
+``nxarray`` extends xarray *DataArrays* and *Datasets* with a high-level python interface for NeXus file input and output.
 
 .. toctree::
-   :maxdepth: 2
+   :caption: Contents
+   :maxdepth: 1
    
    installation
    usage
+
+
+``nxarray`` is supported by the `reScipy project <https://rescipy-project.readthedocs.io>`_.
 
 
 Feedback
