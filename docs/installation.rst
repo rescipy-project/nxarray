@@ -12,7 +12,8 @@ or, if you are using conda:
 
 .. code-block:: bash
 
-    $ conda install -c rescipy nxarray
+    $ conda config --add channels conda-forge rescipy
+    $ conda install nxarray
 
 
 Prerequisites
