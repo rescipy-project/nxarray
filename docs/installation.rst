@@ -8,13 +8,6 @@ You can install nxarray with pip:
 
     $ pip install nxarray
 
-or, if you are using conda:
-
-.. code-block:: bash
-
-    $ conda config --add channels conda-forge rescipy
-    $ conda install nxarray
-
 
 Prerequisites
 =============
