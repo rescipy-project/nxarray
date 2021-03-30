@@ -5,9 +5,8 @@ def to_datarr(nxdata):
     ''' Convert NeXus NXdata to an xarray DataArray
     
     This function convert the NXdata group to an
-    xarray DataArray, keeping the default signal, all the axes
+    xarray DataArray, keeping the @default signal, all the axes
     and attributes.
-    Any other field in the NXdata is disregarded.
     
     Arguments
         nxdata: NeXus NXdata to convert
@@ -52,7 +51,7 @@ def to_datset(nxentry):
     
     This function convert the NXdata groups in the NXentry
     to DataArrays of an xarray Dataset.
-    Any other group in the NXentry is disregarded.
+    Other groups in the NXentry are saved in the Dataset attribute "NX" as a dictionary.
     
     Arguments
         nxentry: NeXus NXentry to convert
@@ -70,10 +69,15 @@ def to_datset(nxentry):
     ## Initialize Dataset
     ds = xr.Dataset()
 
-    ## Add NXdata groups as DataArrays
-    for nxname, nxdata in nxentry.entries.items():
-        if isinstance(nxdata, nx.NXdata):
-            ds[nxname] = to_datarr(nxdata)
+    ## Add NeXus objects to the Dataset
+    ds.attrs["NX"] = dict()
+    for nxname, nxobject in nxentry.entries.items():
+        if isinstance(nxobject, nx.NXdata):
+            # Add NXdata groups as DataArrays
+            ds[nxname] = to_datarr(nxobject)
+        else:
+            # Retrieve other NeXus groups in a dictionary
+            ds.attrs["NX"][nxname] = nxobject
 
     ## Add NXentry attributes to the Dataset
     attrs = _get_attrs(nxentry)
@@ -90,20 +94,26 @@ def _get_attrs(nxfield):
     # Loop over NXattr dictionary
     # skipping some attributes specific to NXfield
     for k,v in nxfield.attrs.items():
-        if k not in ["signal", "axes", "default"] + ["{}_indices".format(a) for a in nxfield.nxaxes]:
+        try:
+            axes_indices = list("{}_indices".format(a) for a in nxfield.nxaxes)
+        except TypeError:
+            axes_indices = list()
+        if k not in ["signal", "axes", "default"] + axes_indices:
             attrs[k] = v.nxvalue
 
     return attrs
 
-def load(filename):
+def load(filename, entry=None):
     ''' Load a NeXus file to an xarray Dataset
     
-    This function load the NXdata groups in the default NXentry
+    This function load the NXdata groups in the given NXentry
     of the NeXus file and return them as an xarray Dataset.
-    Any other group in the file is disregarded.
+    Other groups in the NXentry are saved in the Dataset attribute "NX" as a dictionary.
+    Only one NXentry can be loaded from the NeXus file (by default the @default one).
     
     Arguments
         filename: file path to the NeXus file
+        entry (optional): name of the NXentry to be loaded. If None the @default NXentry will be loaded.
     
     Returns:
         xarray Dataset
@@ -114,11 +124,15 @@ def load(filename):
         ds = nxr.load(path/to/file.nx)
     '''
 
-    # Open file and retrieve default nxdata
+    # Open NeXus file
     f = nx.nxload(filename)
-    nxdata = f.plottable_data
 
-    # Get the nxentry relative to default nxdata
-    # and return it as an xarray dataset
-    nxentry = nxdata.nxgroup
+    # Get the nxentry and return it as an xarray dataset
+    if entry:
+        nxentry = f[entry]
+    else:
+        # Get the nxentry relative to @default nxdata
+        nxdata = f.plottable_data
+        nxentry = nxdata.nxgroup
+
     return to_datset(nxentry)

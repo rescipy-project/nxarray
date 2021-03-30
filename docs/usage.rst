@@ -26,6 +26,9 @@ To load a NeXus file into an xarray *Dataset* use the ``nxr.load()`` function:
     
     ds = nxr.load('path/to/file.nx')
 
+The default NXentry in the NeXus file will be loaded, with all its subgroups (NXdata, NXinstrument, NXsample...).
+To load an NXentry other than the default one, use the ``entry=`` argument.
+
 
 Examples
 ========

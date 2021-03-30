@@ -42,19 +42,18 @@ class _nxrDataArray:
         self._add_axes(nxdata)
 
         ## Add DataArray attributes to signal
-        self._add_attrs(nxdata.nxsignal)
+        _add_attrs(self._datarr.attrs, nxdata.nxsignal)
 
     def _add_signal(self, nxdata):
         signal_name = self._datarr.name if self._datarr.name != None else "signal"
         nxdata.nxsignal = nx.NXfield(self._datarr.values, name=signal_name)
     
     def _add_axes(self, nxdata):
-        _add_axes(self._datarr.coords, nxdata)
+        for coord_name in self._datarr.coords:
+            axes = self._datarr.coords[coord_name].values
+            nxdata.nxaxes = nx.NXfield(axes, name=coord_name)
         # Overwrite the list of all xarray coordinates with just xarray dimensions
         nxdata.attrs["axes"] = list(self._datarr.dims)
-
-    def _add_attrs(self, nxsignal):
-        _add_attrs(self._datarr.attrs, nxsignal)
 
     def save(self, filename, **kwargs):
         ''' Save xarray DataArray to NeXus file
@@ -109,6 +108,13 @@ class _nxrDataset:
         ## Add dataset attributes to NXentry
         _add_attrs(self._datset.attrs, nxentry)
 
+        # Add any other NeXus groups to the dataset
+        try:
+            for nxname, nxobject in self._datset.attrs["NX"].items():
+                nxentry[nxname] = nxobject
+        except KeyError:
+            pass
+
         return nxentry
 
     def save(self, filename, **kwargs):
@@ -134,13 +140,12 @@ class _nxrDataset:
         ## Save to file
         nxentry.save(filename, **kwargs)
 
-def _add_axes(coords, nxdata):
-    for coord_name in coords:
-        axes = coords[coord_name].values
-        nxdata.nxaxes = nx.NXfield(axes, name=coord_name)
-
 def _add_attrs(attrs, nxfield):
     for k,v in attrs.items():
         # Avoid any overwriting of specific NXfield attributes
-        if k not in ["signal", "axes", "default"] + ["{}_indices".format(a) for a in nxfield.nxaxes]:
+        try:
+            axes_indices = list("{}_indices".format(a) for a in nxfield.nxaxes)
+        except TypeError:
+            axes_indices = list()
+        if k not in ["signal", "axes", "default", "NX"] + axes_indices:
             nxfield.attrs[k] = v
