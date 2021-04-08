@@ -1,5 +1,6 @@
 import xarray as xr
 import nexusformat.nexus as nx
+#from types import SimpleNamespace
 
 def to_datarr(nxdata):
     ''' Convert NeXus NXdata to an xarray DataArray
@@ -27,8 +28,12 @@ def to_datarr(nxdata):
 
     ## Generate coordinates dictionary
     coords = {}
+    coords_links = {}
     for axes in nxdata.nxaxes:
         coords[axes.nxname] = axes.nxdata
+        # Check if coordinate is an NXlink
+        if isinstance(nxdata[axes.nxname], nx.NXlink):
+            coords_links[axes.nxname] = nxdata[axes.nxname].nxlink.nxpath
 
     ## Retrieve dimensions
     dims = nxdata.attrs["axes"]
@@ -43,6 +48,12 @@ def to_datarr(nxdata):
                           coords=coords,
                           dims=dims,
                           attrs=attrs)
+
+    # Add NXlink attribute to signal and coordinates
+    if isinstance(nxdata.nxsignal, nx.NXlink):
+        datarr.attrs["NXlink"] = nxdata.nxsignal.nxlink.nxpath
+    for coord, link in coords_links.items():
+        datarr[coord].attrs["NXlink"] = link
 
     return datarr
 
@@ -70,14 +81,16 @@ def to_datset(nxentry):
     ds = xr.Dataset()
 
     ## Add NeXus objects to the Dataset
-    ds.attrs["NX"] = dict()
+    NXgroups = dict()
     for nxname, nxobject in nxentry.entries.items():
         if isinstance(nxobject, nx.NXdata):
             # Add NXdata groups as DataArrays
             ds[nxname] = to_datarr(nxobject)
         else:
             # Retrieve other NeXus groups in a dictionary
-            ds.attrs["NX"][nxname] = nxobject
+            NXgroups[nxname] = nxobject
+    ds.attrs["NX"] = NXgroups
+    #ds.attrs["NX"] = SimpleNamespace(**NXgroups)
 
     ## Add NXentry attributes to the Dataset
     attrs = _get_attrs(nxentry)

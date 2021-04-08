@@ -46,37 +46,26 @@ class _nxrDataArray:
 
     def _add_signal(self, nxdata):
         signal_name = self._datarr.name if self._datarr.name != None else "signal"
-        nxdata.nxsignal = nx.NXfield(self._datarr.values, name=signal_name)
-    
+        if "NXlink" in self._datarr.attrs:
+            # Signal in NXdata is an NXlink
+            target = self._datarr.attrs['NXlink']
+            nxdata[signal_name] = nx.NXlink(target, name=signal_name, abspath=True)
+            nxdata.attrs["signal"] = signal_name
+        else:
+            nxdata.nxsignal = nx.NXfield(self._datarr.values, name=signal_name)
+
     def _add_axes(self, nxdata):
         for coord_name in self._datarr.coords:
-            axes = self._datarr.coords[coord_name].values
-            nxdata.nxaxes = nx.NXfield(axes, name=coord_name)
+            coord = self._datarr.coords[coord_name]
+            axes = coord.values
+            if "NXlink" in coord.attrs:
+                # Coordinate in NXdata is a link
+                target = coord.attrs['NXlink']
+                nxdata[coord_name] = nx.NXlink(target, name=coord_name, abspath=True)
+            else:
+                nxdata.nxaxes = nx.NXfield(axes, name=coord_name)
         # Overwrite the list of all xarray coordinates with just xarray dimensions
         nxdata.attrs["axes"] = list(self._datarr.dims)
-
-    def save(self, filename, **kwargs):
-        ''' Save xarray DataArray to NeXus file
-        
-        Arguments:
-            filename: file path to .nx file
-            **kwargs: any optional argument accepted by NXdata.save() method
-        
-        Returns:
-            nothing
-        
-        Example:
-            import nxarray as nxr
-            
-            dr = xarray.DataArray()
-            dr.nxr.save(path/to/file.nx)
-        '''
-
-        ## Initialize NXdata
-        nxdata = self._datarr.nxr.to_nxdata()
-
-        ## Save to file
-        nxdata.save(filename, **kwargs)
 
 @xr.register_dataset_accessor("nxr")
 class _nxrDataset:
@@ -147,5 +136,5 @@ def _add_attrs(attrs, nxfield):
             axes_indices = list("{}_indices".format(a) for a in nxfield.nxaxes)
         except TypeError:
             axes_indices = list()
-        if k not in ["signal", "axes", "default", "NX"] + axes_indices:
+        if k not in ["signal", "axes", "default", "NX", "NXlink"] + axes_indices:
             nxfield.attrs[k] = v
