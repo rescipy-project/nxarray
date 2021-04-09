@@ -26,19 +26,47 @@ def to_datarr(nxdata):
     data = nxdata.nxsignal.nxdata
     name = nxdata.nxsignal.nxname
 
+    ## Retrieve dimensions
+    axes = nxdata.attrs["axes"]
+    if isinstance(axes, str):
+        axes = [axes]
+
     ## Generate coordinates dictionary
     coords = {}
     coords_links = {}
-    for axes in nxdata.nxaxes:
-        coords[axes.nxname] = axes.nxdata
-        # Check if coordinate is an NXlink
-        if isinstance(nxdata[axes.nxname], nx.NXlink):
-            coords_links[axes.nxname] = nxdata[axes.nxname].nxlink.nxpath
 
-    ## Retrieve dimensions
-    dims = nxdata.attrs["axes"]
+    # Cycle over NXgroup entries
+    for entry in nxdata.entries:
 
-    ## Add NXdata and NXsignal attributes to the DataArray
+        # ENTRY is listed as an axes
+        if entry in axes:
+            coords[entry] = (entry, nxdata[entry].nxdata)
+            # Check if coordinate is an NXlink
+            if isinstance(nxdata[entry], nx.NXlink):
+                coords_links[entry] = nxdata[entry].nxlink.nxpath
+
+        # ENTRY is *not* listed as an axes
+        else:
+            # Check if there is an ENTRY_indices attribute
+            # indicating the ENTRY is an axes
+            index_attr = (entry+"_indices")
+            if index_attr in nxdata.attrs:
+                # The ENTRY is indeed an axis
+                index = nxdata.attrs[index_attr]
+                try:
+                    # Retrieve dimension name
+                    dim_name = axes[index]
+                    coords[entry] = (dim_name, nxdata[entry].nxdata)
+                    # Check if coordinate is an NXlink
+                    if isinstance(nxdata[entry], nx.NXlink):
+                        coords_links[entry] = nxdata[entry].nxlink.nxpath
+                except:
+                    # axes attribute does not provide enough entries
+                    # to match the ENTRY_indices attribute.
+                    # This axis is skipped.
+                    pass
+
+    ## Collect NXdata and NXsignal attributes
     attrs = {**_get_attrs(nxdata),
              **_get_attrs(nxdata.nxsignal)}
 
@@ -46,7 +74,7 @@ def to_datarr(nxdata):
     datarr = xr.DataArray(data,
                           name=name,
                           coords=coords,
-                          dims=dims,
+                          dims=axes,
                           attrs=attrs)
 
     # Add NXlink attribute to signal and coordinates
@@ -85,7 +113,7 @@ def to_datset(nxentry):
     for nxname, nxobject in nxentry.entries.items():
         if isinstance(nxobject, nx.NXdata):
             # Add NXdata groups as DataArrays
-            ds[nxname] = to_datarr(nxobject)
+            ds[nxobject.nxsignal.nxname] = to_datarr(nxobject)
         else:
             # Retrieve other NeXus groups in a dictionary
             NXgroups[nxname] = nxobject
