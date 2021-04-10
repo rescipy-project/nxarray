@@ -12,68 +12,6 @@ class _nxrDataArray:
         #self._NXdata_name = None
         #self._NXdata_attrs = None
 
-    def to_nxdata(self):
-        ''' Convert xarray DataArray to NeXus NXdata
-        
-        Returns:
-            NeXus NXdata
-        
-        Example:
-            import nxarray as nxr
-            
-            dr = xarray.DataArray()
-            nxdata = dr.nxr.to_nxdata()
-        '''
-
-        ## Initialize NXdata
-        if "NXdata_name" in self._datarr.attrs:
-            nxname = self._datarr.attrs["NXdata_name"]
-        else:
-            nxname = self._datarr.name if self._datarr.name != None else "data"
-
-        nxdata = nx.NXdata(name=nxname)
-
-        ## Add dataset to NXdata
-        self._add_to(nxdata)
-
-        return nxdata
-
-    def _add_to(self, nxdata):
-        ''' Add DataArray to NXdata as signal with axes
-        '''
-
-        ## Add signal
-        self._add_signal(nxdata)
-
-        ## Add axes
-        self._add_axes(nxdata)
-
-        ## Add DataArray attributes to signal
-        _add_attrs(self._datarr.attrs, nxdata.nxsignal)
-
-    def _add_signal(self, nxdata):
-        signal_name = self._datarr.name if self._datarr.name != None else "signal"
-        if "target" in self._datarr.attrs:
-            # Signal in NXdata is an NXlink
-            target = self._datarr.attrs['target']
-            nxdata[signal_name] = nx.NXlink(target, name=signal_name, abspath=True)
-            nxdata.attrs["signal"] = signal_name
-        else:
-            nxdata.nxsignal = nx.NXfield(self._datarr.values, name=signal_name)
-
-    def _add_axes(self, nxdata):
-        for coord_name in self._datarr.coords:
-            coord = self._datarr.coords[coord_name]
-            axes = coord.values
-            if "target" in coord.attrs:
-                # Coordinate in NXdata is a link
-                target = coord.attrs['target']
-                nxdata[coord_name] = nx.NXlink(target, name=coord_name, abspath=True)
-            else:
-                nxdata.nxaxes = nx.NXfield(axes, name=coord_name)
-        # Overwrite the list of all xarray coordinates with just xarray dimensions
-        nxdata.attrs["axes"] = list(self._datarr.dims)
-
 @xr.register_dataset_accessor("nxr")
 class _nxrDataset:
     '''nxarray class extending xarray Dataset
@@ -98,23 +36,54 @@ class _nxrDataset:
         '''
 
         ## Initialize NXentry
-        nxentry = nx.NXentry()
+        if self._NXentry_name:
+            nxentry_name = self._NXentry_name
+        else:
+            nxentry_name = "entry"
+        nxentry = nx.NXentry(name=nxentry_name)
 
         ## Add dataset attributes to NXentry
         _add_attrs(self._datset.attrs, nxentry)
 
-        # Add any other NeXus groups to the dataset
-        try:
-            for nxname, nxobject in self._datset.attrs["NX"].__dict__.items():
-                nxentry[nxname] = nxobject
-        except KeyError:
-            pass
+        # Add any other NeXus group to the dataset
+        for nxname, nxobject in self._datset.attrs["NX"].__dict__.items():
+            nxentry[nxname] = nxobject
 
         ## Add DataArrays as NXdata groups
-        for name, datarr in self._datset.data_vars.items():
-            nxentry[name] = datarr.nxr.to_nxdata()
+        self._add_nxdata(nxentry)
 
         return nxentry
+
+    def _add_nxdata(self, nxentry):
+
+        ## Cycle over data variables and coordinates
+        for variable in self._datset.variables:
+
+            datarr = self._datset[variable]
+
+            ## Create NXdata group if not present and add attributes to it
+            if "NXdata_name" in datarr.attrs:
+                nxdata_name = datarr.attrs["NXdata_name"]
+                if nxdata_name not in nxentry:
+                    nxentry[nxdata_name] = nx.NXdata()
+                if "NXdata_attrs" in datarr.attrs:
+                    _add_attrs(datarr.attrs["NXdata_attrs"], nxentry[nxdata_name])
+                # Get field path
+                nxfield_path = nxdata_name + "/" + datarr.name
+            else:
+                nxfield_path = datarr.name
+
+            if "target" in datarr.attrs:
+                # The field is an NXlink
+                target = datarr.attrs['target']
+                nxentry[nxfield_path] = nx.NXlink(target, name=datarr.name, abspath=True)
+            else:
+                nxentry[nxfield_path] = nx.NXfield(datarr.values, name=datarr.name)
+
+            # Add attributes to the field
+            _add_attrs(datarr.attrs, nxentry[nxfield_path])
+
+            #TODO Add @axes, @signal and @AXIS_indices of not present
 
     def save(self, filename, **kwargs):
         ''' Save xarray Dataset to NeXus file
@@ -141,13 +110,5 @@ class _nxrDataset:
 
 def _add_attrs(attrs, nxfield):
     for k,v in attrs.items():
-        '''
-        # Avoid any overwriting of specific NXfield attributes
-        try:
-            axes_indices = list("{}_indices".format(a) for a in nxfield.nxaxes)
-        except TypeError:
-            axes_indices = list()
-        if k not in ["signal", "axes", "default", "NX", "_NXdata_name"] + axes_indices:
-        '''
         if k not in ["NX", "NXdata_name", "NXdata_attrs"]:
             nxfield.attrs[k] = v
