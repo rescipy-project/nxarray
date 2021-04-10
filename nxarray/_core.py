@@ -1,89 +1,128 @@
 import xarray as xr
 import nexusformat.nexus as nx
-#from types import SimpleNamespace
 
-def to_datarr(nxdata):
-    ''' Convert NeXus NXdata to an xarray DataArray
+def _to_datarrs(nxdata):
+    ''' Convert NeXus NXdata to xarray data variables and coordinates
     
-    This function convert the NXdata group to an
-    xarray DataArray, keeping the @default signal, all the axes
+    This function convert the NXdata group to xarray data variables
+    and coordinates, keeping the @default signal, all the axes
     and attributes.
     
     Arguments
         nxdata: NeXus NXdata to convert
     
     Returns:
-        xarray DataArray
-    
-    Example:
-        import nxarray as nxr
-        
-        nxdata = nexus.NXdata()
-        dr = nxr.to_datarr(nxdata)
+        tuple of data variables list and coordinates list
     '''
 
-    ## Retrieve data and name
-    data = nxdata.nxsignal.nxdata
-    name = nxdata.nxsignal.nxname
+    ## Retrieve signal data and name
+    signal_data = nxdata.nxsignal.nxdata
+    signal_name = nxdata.nxsignal.nxname
 
     ## Retrieve dimensions
     axes = nxdata.attrs["axes"]
     if isinstance(axes, str):
         axes = [axes]
 
-    ## Generate coordinates dictionary
-    coords = {}
-    coords_links = {}
+    ## Data variables and coordinates lists
+    data_vars = list()
+    coords = list()
 
     # Cycle over NXgroup entries
     for entry in nxdata.entries:
 
-        # ENTRY is listed as an axes
-        if entry in axes:
-            coords[entry] = (entry, nxdata[entry].nxdata)
-            # Check if coordinate is an NXlink
-            if isinstance(nxdata[entry], nx.NXlink):
-                coords_links[entry] = nxdata[entry].nxlink.nxpath
+        # ENTRY is the default signal
+        if entry == signal_name:
+            # Collect NXdata and NXsignal attributes
+            attrs = _get_attrs(nxdata.nxsignal)
+            datarr = xr.DataArray(signal_data,
+                                  name=signal_name,
+                                  dims=axes,
+                                  attrs=attrs)
 
-        # ENTRY is *not* listed as an axes
+            # Set NXdata and NXlink attributes
+            datarr.attrs["NXdata_name"] = nxdata.nxname
+            if isinstance(nxdata[entry], nx.NXlink):
+                datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
+
+            # Add NXdata attributes reference
+            datarr.attrs["NXdata_attrs"] = _get_attrs(nxdata)
+
+            # Add signal datarr to data_vars list
+            data_vars.append(datarr)
+
+        # ENTRY is listed as an axes
+        elif entry in axes:
+            attrs = _get_attrs(nxdata[entry])
+            datarr = xr.DataArray(nxdata[entry].nxdata,
+                                  name=entry,
+                                  dims=[entry],
+                                  attrs=attrs)
+
+            # Set NXdata and NXlink attributes
+            datarr.attrs["NXdata_name"] = nxdata.nxname
+            if isinstance(nxdata[entry], nx.NXlink):
+                datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
+
+            # Add signal datarr to coords list
+            coords.append(datarr)
+
+        # ENTRY is *not* the default signal nor is listed as an axes
         else:
             # Check if there is an ENTRY_indices attribute
             # indicating the ENTRY is an axes
             index_attr = (entry+"_indices")
-            if index_attr in nxdata.attrs:
+
+            if index_attr in nxdata.attrs.keys():
                 # The ENTRY is indeed an axis
                 index = nxdata.attrs[index_attr]
                 try:
                     # Retrieve dimension name
                     dim_name = axes[index]
-                    coords[entry] = (dim_name, nxdata[entry].nxdata)
-                    # Check if coordinate is an NXlink
+
+                    attrs = _get_attrs(nxdata[entry])
+                    datarr = xr.DataArray(nxdata[entry].nxdata,
+                                          name=entry,
+                                          dims=[dim_name],
+                                          attrs=attrs)
+
+                    # Set NXdata and NXlink attributes
+                    datarr.attrs["NXdata_name"] = nxdata.nxname
                     if isinstance(nxdata[entry], nx.NXlink):
-                        coords_links[entry] = nxdata[entry].nxlink.nxpath
+                        datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
+
+                    # Add signal datarr to coords list
+                    coords.append(datarr)
+
                 except:
-                    # axes attribute does not provide enough entries
+                    # Axes attribute does not provide enough entries
                     # to match the ENTRY_indices attribute.
-                    # This axis is skipped.
                     pass
 
-    ## Collect NXdata and NXsignal attributes
-    attrs = {**_get_attrs(nxdata),
-             **_get_attrs(nxdata.nxsignal)}
+            # If the ENTRY has the same shape as signal
+            # assume it is a data variable
+            elif signal_data.shape == nxdata[entry].shape:
+                # Collect NXdata and NXsignal attributes
+                attrs = _get_attrs(nxdata[entry])
+                datarr = xr.DataArray(nxdata[entry].nxdata,
+                                      name=entry,
+                                      dims=axes,
+                                      attrs=attrs)
 
-    # Create the xarray DataArray
-    datarr = xr.DataArray(data,
-                          name=name,
-                          coords=coords,
-                          dims=axes,
-                          attrs=attrs)
+                # Set NXdata and NXlink attributes
+                datarr.attrs["NXdata_name"] = nxdata.nxname
+                if isinstance(nxdata[entry], nx.NXlink):
+                    datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
-    # Add NXlink attribute to signal and coordinates
-    if isinstance(nxdata.nxsignal, nx.NXlink):
-        datarr.attrs["NXlink"] = nxdata.nxsignal.nxlink.nxpath
-    for coord, link in coords_links.items():
-        datarr[coord].attrs["NXlink"] = link
+                # Add signal datarr to data_vars list
+                data_vars.append(datarr)
 
-    return datarr
+            # The ENTRY can not be recognised as data variable nor
+            # coordinate. This field is skipped.
+            else:
+                print("Warning: skipping field '{}' in '{}' group.".format(entry, nxdata.nxname))
+
+    return data_vars, coords
 
 def to_datset(nxentry):
     ''' Convert NeXus NXentry to an xarray Dataset
@@ -108,20 +147,24 @@ def to_datset(nxentry):
     ## Initialize Dataset
     ds = xr.Dataset()
 
+    ## Add NXentry attributes to the Dataset
+    ds.attrs = _get_attrs(nxentry)
+    ds.nxr._NXentry_name = nxentry.nxname
+
     ## Add NeXus objects to the Dataset
-    NXgroups = dict()
+    NXobjects = dict()
     for nxname, nxobject in nxentry.entries.items():
         if isinstance(nxobject, nx.NXdata):
-            # Add NXdata groups as DataArrays
-            ds[nxobject.nxsignal.nxname] = to_datarr(nxobject)
+            # Add NXdata fields as data_vars and coords
+            data_vars, coords = _to_datarrs(nxobject)
+            for data_var in data_vars:
+                ds[data_var.name] = data_var
+            for coord in coords:
+                ds.coords[coord.name] = coord
         else:
             # Retrieve other NeXus groups in a dictionary
-            NXgroups[nxname] = nxobject
-    ds.attrs["NX"] = NXgroups
-    #ds.attrs["NX"] = SimpleNamespace(**NXgroups)
-
-    ## Add NXentry attributes to the Dataset
-    attrs = _get_attrs(nxentry)
+            NXobjects[nxname] = nxobject
+    ds.attrs["NX"] = NXtree(NXobjects)
 
     return ds
 
@@ -135,12 +178,15 @@ def _get_attrs(nxfield):
     # Loop over NXattr dictionary
     # skipping some attributes specific to NXfield
     for k,v in nxfield.attrs.items():
+        attrs[k] = v.nxvalue
+        '''
         try:
             axes_indices = list("{}_indices".format(a) for a in nxfield.nxaxes)
         except TypeError:
             axes_indices = list()
         if k not in ["signal", "axes", "default"] + axes_indices:
             attrs[k] = v.nxvalue
+        '''
 
     return attrs
 
@@ -149,7 +195,7 @@ def load(filename, entry=None):
     
     This function load the NXdata groups in the given NXentry
     of the NeXus file and return them as an xarray Dataset.
-    Other groups in the NXentry are saved in the Dataset attribute "NX" as a dictionary.
+    Other groups in the NXentry tree are saved in the Dataset attribute "NX".
     Only one NXentry can be loaded from the NeXus file (by default the @default one).
     
     Arguments
@@ -177,3 +223,20 @@ def load(filename, entry=None):
         nxentry = nxdata.nxgroup
 
     return to_datset(nxentry)
+
+class NXtree():
+
+    def  __init__(self, d):
+        self.__dict__ = d
+    
+    def __str__(self):
+        items = len(self.__dict__)
+        return "NeXus tree ({} objects).".format(items)
+
+    def __repr__(self):
+        tree = list()
+        for k, v in self.__dict__.items():
+            if isinstance(v, nx.NXobject):
+                tree.append(v.tree)
+        return "\n".join(tree)
+
