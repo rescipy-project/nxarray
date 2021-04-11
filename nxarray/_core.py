@@ -1,7 +1,7 @@
 import xarray as xr
 import nexusformat.nexus as nx
 
-def _to_datarrs(nxdata):
+def _to_datarrs(ds, nxdata):
     ''' Convert NeXus NXdata to xarray data variables and coordinates
     
     This function convert the NXdata group to xarray data variables
@@ -45,15 +45,15 @@ def _to_datarrs(nxdata):
                                   attrs=attrs)
 
             # Set NXdata and NXlink attributes
-            datarr.attrs["nxgroup"] = nxdata.nxname
+            ds.nxr._nxgroup[datarr.name] = nxdata.nxname
             if isinstance(nxdata[entry], nx.NXlink):
                 datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
             # Add NXdata attributes reference
-            datarr.attrs["nxgroup_attrs"] = _get_attrs(nxdata)
+            ds.nxr._nxdata_attrs[nxdata.nxname] = _get_attrs(nxdata)
 
-            # Add signal datarr to data_vars list
-            data_vars.append(datarr)
+            # Add signal datarr to data_vars
+            ds[datarr.name] = datarr
 
         # ENTRY is listed as an axes
         elif entry in axes:
@@ -64,12 +64,12 @@ def _to_datarrs(nxdata):
                                   attrs=attrs)
 
             # Set NXdata and NXlink attributes
-            datarr.attrs["nxgroup"] = nxdata.nxname
+            ds.nxr._nxgroup[datarr.name] = nxdata.nxname
             if isinstance(nxdata[entry], nx.NXlink):
                 datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
-            # Add signal datarr to coords list
-            coords.append(datarr)
+            # Add signal datarr to coords
+            ds.coords[datarr.name] = datarr
 
         # ENTRY is *not* the default signal nor is listed as an axes
         else:
@@ -91,12 +91,12 @@ def _to_datarrs(nxdata):
                                           attrs=attrs)
 
                     # Set NXdata and NXlink attributes
-                    datarr.attrs["nxgroup"] = nxdata.nxname
+                    ds.nxr._nxgroup[datarr.name] = nxdata.nxname
                     if isinstance(nxdata[entry], nx.NXlink):
                         datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
-                    # Add signal datarr to coords list
-                    coords.append(datarr)
+                    # Add signal datarr to coords
+                    ds.coords[datarr.name] = datarr
 
                 except:
                     # Axes attribute does not provide enough entries
@@ -114,12 +114,12 @@ def _to_datarrs(nxdata):
                                       attrs=attrs)
 
                 # Set NXdata and NXlink attributes
-                datarr.attrs["nxgroup"] = nxdata.nxname
+                ds.nxr._nxgroup[datarr.name] = nxdata.nxname
                 if isinstance(nxdata[entry], nx.NXlink):
                     datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
-                # Add signal datarr to data_vars list
-                data_vars.append(datarr)
+                # Add signal datarr to data_vars
+                ds[datarr.name] = datarr
 
             # The ENTRY can not be recognised as data variable nor
             # coordinate. This field is skipped.
@@ -142,10 +142,10 @@ def to_datset(nxentry):
         xarray Dataset
     
     Example:
-        import nxarray as nxr
+        import nxarray
         
         nxentry = nexus.NXentry()
-        ds = nxr.to_datset(nxentry)
+        ds = nxarray.to_datset(nxentry)
     '''
 
     ## Initialize Dataset
@@ -153,18 +153,21 @@ def to_datset(nxentry):
 
     ## Add NXentry attributes to the Dataset
     ds.attrs = _get_attrs(nxentry)
-    ds.nxr._NXentry_name = nxentry.nxname
+    ds.nxr._nxentry_name = nxentry.nxname
 
     ## Add NeXus objects to the Dataset
     NXobjects = dict()
     for nxname, nxobject in nxentry.entries.items():
         if isinstance(nxobject, nx.NXdata):
             # Add NXdata fields as data_vars and coords
+            _to_datarrs(ds, nxobject)
+            '''
             data_vars, coords = _to_datarrs(nxobject)
             for data_var in data_vars:
                 ds[data_var.name] = data_var
             for coord in coords:
                 ds.coords[coord.name] = coord
+            '''
         else:
             # Retrieve other NeXus groups in a dictionary
             NXobjects[nxname] = nxobject
@@ -210,9 +213,9 @@ def load(filename, entry=None):
         xarray Dataset
     
     Example:
-        import nxarray as nxr
+        import nxarray
         
-        ds = nxr.load(path/to/file.nx)
+        ds = nxarray.load(path/to/file.nx)
     '''
 
     # Open NeXus file

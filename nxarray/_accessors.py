@@ -9,9 +9,6 @@ class _nxrDataArray:
     def __init__(self, xarray_dataarray):
         self._datarr = xarray_dataarray
 
-        #self._nxgroup = None
-        #self._nxgroup_attrs = None
-
 @xr.register_dataset_accessor("nxr")
 class _nxrDataset:
     '''nxarray class extending xarray Dataset
@@ -20,7 +17,9 @@ class _nxrDataset:
     def __init__(self, xarray_dataset):
         self._datset = xarray_dataset
 
-        self._NXentry_name = None
+        self._nxentry_name = None
+        self._nxdata_attrs = dict()
+        self._nxgroup = dict()
 
     def to_nxentry(self):
         ''' Convert xarray Dataset to NeXus NXentry
@@ -29,15 +28,15 @@ class _nxrDataset:
             NeXus NXentry
         
         Example:
-            import nxarray as nxr
+            import nxarray
             
             ds = xarray.Dataset()
             nxentry = ds.nxr.to_nxentry()
         '''
 
         ## Initialize NXentry
-        if self._NXentry_name:
-            nxentry_name = self._NXentry_name
+        if self._nxentry_name:
+            nxentry_name = self._nxentry_name
         else:
             nxentry_name = "entry"
         nxentry = nx.NXentry(name=nxentry_name)
@@ -63,15 +62,15 @@ class _nxrDataset:
             datarr = self._datset[variable]
 
             ## Create NXdata group if not present
-            if "nxgroup" in datarr.attrs:
-                nxdata_name = datarr.attrs["nxgroup"]
+            if datarr.name in self._nxgroup:
+                nxdata_name = self._nxgroup[datarr.name]
             else:
                 nxdata_name = "data"
             if nxdata_name not in nxentry:
                 nxentry[nxdata_name] = nx.NXdata()
             # Add NXdata attributes
-            if "nxgroup_attrs" in datarr.attrs:
-                _add_attrs(datarr.attrs["nxgroup_attrs"], nxentry[nxdata_name])
+            if nxdata_name in self._datset.nxr._nxdata_attrs:
+                _add_attrs(self._datset.nxr._nxdata_attrs[nxdata_name], nxentry[nxdata_name])
             # Get field path
             nxfield_path = nxdata_name + "/" + datarr.name
 
@@ -120,7 +119,7 @@ class _nxrDataset:
             nothing
         
         Example:
-            import nxarray as nxr
+            import nxarray
             
             ds = xarray.Dataset()
             ds.nxr.save(path/to/file.nx)
@@ -134,5 +133,5 @@ class _nxrDataset:
 
 def _add_attrs(attrs, nxfield):
     for k,v in attrs.items():
-        if k not in ["NX", "nxgroup", "nxgroup_attrs"]:
+        if k != "NX":
             nxfield.attrs[k] = v
