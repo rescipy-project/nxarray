@@ -15,9 +15,13 @@ def _to_datarrs(nxdata):
         tuple of data variables list and coordinates list
     '''
 
+    ## Check @signal and @axes attributes exist
+    if any(attr not in nxdata.attrs for attr in ["signal", "axes"]):
+        return list(), list()
+
     ## Retrieve signal data and name
-    signal_data = nxdata.nxsignal.nxdata
-    signal_name = nxdata.nxsignal.nxname
+    signal_name = nxdata.attrs["signal"]
+    signal_data = nxdata[signal_name].nxdata
 
     ## Retrieve dimensions
     axes = nxdata.attrs["axes"]

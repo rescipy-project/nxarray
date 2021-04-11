@@ -46,8 +46,9 @@ class _nxrDataset:
         _add_attrs(self._datset.attrs, nxentry)
 
         # Add any other NeXus group to the dataset
-        for nxname, nxobject in self._datset.attrs["NX"].__dict__.items():
-            nxentry[nxname] = nxobject
+        if "NX" in self._datset.attrs:
+            for nxname, nxobject in self._datset.attrs["NX"].__dict__.items():
+                nxentry[nxname] = nxobject
 
         ## Add DataArrays as NXdata groups
         self._add_nxdata(nxentry)
@@ -84,11 +85,24 @@ class _nxrDataset:
             # Add attributes to the field
             _add_attrs(datarr.attrs, nxentry[nxfield_path])
 
-        ## Add @axes, @signal and @AXIS_indices to NXdata if not present
+        ## Add @axes attribute to NXdata if not present
         if "axes" not in nxentry[nxdata_name].attrs:
             nxentry[nxdata_name].attrs["axes"] = list(self._datset.dims)
+
+        ## Add @signal attribute to NXdata if not present
         if "signal" not in nxentry[nxdata_name].attrs:
-            nxentry[nxdata_name].attrs["signal"] = list(self._datset.data_vars)[0]
+            signal = ""
+            # Look for @signal attribute in data variables
+            for data_var in list(self._datset.data_vars):
+                if "signal" in self._datset[data_var].attrs:
+                    signal = data_var
+            if signal == "":
+                # No @signal attributes found.
+                # Pick first data variable as signal
+                signal = list(self._datset.data_vars)[0]
+            nxentry[nxdata_name].attrs["signal"] = signal
+
+        ## Add @AXIS_indices attributes to NXdata if not present
         for coord in self._datset.coords.keys():
             if (coord+"_indices") not in nxentry[nxdata_name].attrs:
                 for index, dim in enumerate(self._datset.dims):
