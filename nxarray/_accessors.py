@@ -9,8 +9,8 @@ class _nxrDataArray:
     def __init__(self, xarray_dataarray):
         self._datarr = xarray_dataarray
 
-        #self._NXdata_name = None
-        #self._NXdata_attrs = None
+        #self._nxgroup = None
+        #self._nxgroup_attrs = None
 
 @xr.register_dataset_accessor("nxr")
 class _nxrDataset:
@@ -61,17 +61,18 @@ class _nxrDataset:
 
             datarr = self._datset[variable]
 
-            ## Create NXdata group if not present and add attributes to it
-            if "NXdata_name" in datarr.attrs:
-                nxdata_name = datarr.attrs["NXdata_name"]
-                if nxdata_name not in nxentry:
-                    nxentry[nxdata_name] = nx.NXdata()
-                if "NXdata_attrs" in datarr.attrs:
-                    _add_attrs(datarr.attrs["NXdata_attrs"], nxentry[nxdata_name])
-                # Get field path
-                nxfield_path = nxdata_name + "/" + datarr.name
+            ## Create NXdata group if not present
+            if "nxgroup" in datarr.attrs:
+                nxdata_name = datarr.attrs["nxgroup"]
             else:
-                nxfield_path = datarr.name
+                nxdata_name = "data"
+            if nxdata_name not in nxentry:
+                nxentry[nxdata_name] = nx.NXdata()
+            # Add NXdata attributes
+            if "nxgroup_attrs" in datarr.attrs:
+                _add_attrs(datarr.attrs["nxgroup_attrs"], nxentry[nxdata_name])
+            # Get field path
+            nxfield_path = nxdata_name + "/" + datarr.name
 
             if "target" in datarr.attrs:
                 # The field is an NXlink
@@ -83,7 +84,16 @@ class _nxrDataset:
             # Add attributes to the field
             _add_attrs(datarr.attrs, nxentry[nxfield_path])
 
-            #TODO Add @axes, @signal and @AXIS_indices of not present
+        ## Add @axes, @signal and @AXIS_indices to NXdata if not present
+        if "axes" not in nxentry[nxdata_name].attrs:
+            nxentry[nxdata_name].attrs["axes"] = list(self._datset.dims)
+        if "signal" not in nxentry[nxdata_name].attrs:
+            nxentry[nxdata_name].attrs["signal"] = list(self._datset.data_vars)[0]
+        for coord in self._datset.coords.keys():
+            if (coord+"_indices") not in nxentry[nxdata_name].attrs:
+                for index, dim in enumerate(self._datset.dims):
+                    if self._datset[coord].dims[0] == dim:
+                        nxentry[nxdata_name].attrs[coord+"_indices"] = index
 
     def save(self, filename, **kwargs):
         ''' Save xarray Dataset to NeXus file
@@ -110,5 +120,5 @@ class _nxrDataset:
 
 def _add_attrs(attrs, nxfield):
     for k,v in attrs.items():
-        if k not in ["NX", "NXdata_name", "NXdata_attrs"]:
+        if k not in ["NX", "nxgroup", "nxgroup_attrs"]:
             nxfield.attrs[k] = v

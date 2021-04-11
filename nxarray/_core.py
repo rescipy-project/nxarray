@@ -34,19 +34,19 @@ def _to_datarrs(nxdata):
         # ENTRY is the default signal
         if entry == signal_name:
             # Collect NXdata and NXsignal attributes
-            attrs = _get_attrs(nxdata.nxsignal)
-            datarr = xr.DataArray(signal_data,
-                                  name=signal_name,
+            attrs = _get_attrs(nxdata[entry])
+            datarr = xr.DataArray(nxdata[entry].nxdata,
+                                  name=entry,
                                   dims=axes,
                                   attrs=attrs)
 
             # Set NXdata and NXlink attributes
-            datarr.attrs["NXdata_name"] = nxdata.nxname
+            datarr.attrs["nxgroup"] = nxdata.nxname
             if isinstance(nxdata[entry], nx.NXlink):
                 datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
             # Add NXdata attributes reference
-            datarr.attrs["NXdata_attrs"] = _get_attrs(nxdata)
+            datarr.attrs["nxgroup_attrs"] = _get_attrs(nxdata)
 
             # Add signal datarr to data_vars list
             data_vars.append(datarr)
@@ -60,7 +60,7 @@ def _to_datarrs(nxdata):
                                   attrs=attrs)
 
             # Set NXdata and NXlink attributes
-            datarr.attrs["NXdata_name"] = nxdata.nxname
+            datarr.attrs["nxgroup"] = nxdata.nxname
             if isinstance(nxdata[entry], nx.NXlink):
                 datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
@@ -87,7 +87,7 @@ def _to_datarrs(nxdata):
                                           attrs=attrs)
 
                     # Set NXdata and NXlink attributes
-                    datarr.attrs["NXdata_name"] = nxdata.nxname
+                    datarr.attrs["nxgroup"] = nxdata.nxname
                     if isinstance(nxdata[entry], nx.NXlink):
                         datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
@@ -110,7 +110,7 @@ def _to_datarrs(nxdata):
                                       attrs=attrs)
 
                 # Set NXdata and NXlink attributes
-                datarr.attrs["NXdata_name"] = nxdata.nxname
+                datarr.attrs["nxgroup"] = nxdata.nxname
                 if isinstance(nxdata[entry], nx.NXlink):
                     datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
