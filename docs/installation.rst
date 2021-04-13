@@ -12,7 +12,7 @@ You can install nxarray with pip:
 Prerequisites
 =============
 
-nxarray is built on and depends on nexusformat and xarray packages:
+nxarray is built on and depends on ``nexusformat`` and ``xarray`` packages:
 
 * `nexusformat <https://github.com/nexpy/nexusformat>`_
 * `xarray <http://xarray.pydata.org>`_

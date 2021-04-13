@@ -2,32 +2,53 @@
 Usage
 =====
 
-After installation, the recommended import is:
-
-.. code-block:: python
+After installation, import nxarray with:
     
-    import nxarray as nxr
+>>> import nxarray
 
 
-Now the ``nxr.save()`` method will be available to xarray objects. To save an existing *DataArray* or *Dataset* to a NeXus file simply use it with:
-
-.. code-block:: python
+Now the ``nxr.save()`` method will be available to xarray *Datasets*. To save an existing *Dataset* to a NeXus file simply type:
     
-    dr = xarray.DataArray()
-    dr.nxr.save('path/to/file.nx')
+>>> ds = xarray.Dataset()
+>>> ds.nxr.save('path/to/file.nx')
+
+
+To load a NeXus file into an xarray *Dataset* use the ``nxarray.load()`` function:
     
-    ds = xarray.Dataset()
-    ds.nxr.save('path/to/file.nx')
+>>> ds = nxarray.load('path/to/file.nx')
 
+The default *NXentry* in the NeXus file will be loaded into the *Dataset*, with all its subgroups (*NXdata*, *NXinstrument*, *NXsample*...).
 
-To load a NeXus file into an xarray *Dataset* use the ``nxr.load()`` function:
-
-.. code-block:: python
+Note that just a single *NXentry* at once can be loaded into a *Dataset*. To load a different *NXentry*, specify it using the ``entry=`` argument:
     
-    ds = nxr.load('path/to/file.nx')
+>>> ds = nxarray.load('path/to/file.nx', entry="myentry")
 
-The default NXentry in the NeXus file will be loaded, with all its subgroups (NXdata, NXinstrument, NXsample...).
-To load an NXentry other than the default one, use the ``entry=`` argument.
+Upon loading, the fields in the *NXdata* groups within the *NXentry* are loaded into *data variable* and *coordinates* of the dataset, with their relevant attributes:
+
+>>> ds
+
+
+The NeXus tree of the *NXentry* with all the subgroups (*NXinstrument*, *NXsample*...) is stored in the ``NXtree`` attribute of the *Dataset* (TAB completion can be used on ``NXtree``).
+    
+>>> ds.NXtree
+    data:NXdata
+      @axes = 'energy'
+      @energy_indices = 0
+      @signal = 'absorbed_beam'
+    instrument:NXinstrument
+      source:NXsource
+      current = 308.52
+        @units = 'mA'
+
+>>> ds.NXtree.instrument
+    NXinstrument('instrument')
+
+
+All xarray methods and attributes are accesible as usual. E.g. to plot the default signal:
+
+>>> ds.absorbed_beam.plot()
+
+For more info on the resulting *Dataset* structure and the architecture of ``nxarray`` look at the :doc:`Design section </design>`.
 
 
 Examples
@@ -59,31 +80,17 @@ The ``ds`` *Dataset* can be saved to a NeXus file to disk simply with:
     
     ds.nxr.save('ds.nxs')
 
-You can load it back, let's say to another *Dataset* ``my_ds`` with:
+You can load it back, let's say to another *Dataset* ``ds2`` with:
 
 .. code-block:: python
     
-    my_ds = nxr.load('ds.nxs')
+    ds2 = nxarray.load('ds.nxs')
 
-and you can check that the whole structure of your *Dataset* is the same.
-
-A *DataArray* can also be saved to a NeXus file. In this case, a *Dataset*, with your *DataArray* inside, will be automatically created and saved to file. For example the ``data`` *DataArray* of the previous example can be equally saved with:
-
-.. code-block:: python
-    
-    data.nxr.save('data.nxs')
-
-This time, when you will load it back, a *Dataset* will be returned, with your original *DataArray* inside it:
-
-.. code-block:: python
-    
-    my_ds2 = nxr.load('data.nxs')
-    my_data2 = ds2['some_data']
+and you can check that the whole structure of your *Dataset* is preserved.
+Additionally, the ``NXtree`` attribute is present (in this example containing zero objects).
 
 
 Naming conventions
 ==================
 
-Note that the ``nxr`` accessor for xarray objects will always be available with this naming, i.e. ``nxr.save()`` will be used independently of the shorthand used when import nxarray.
-
-On the other hand, ``nxarray`` methods naming will depend on the import statement, *i.e.* when using just ``import nxarray``, ``load()`` will be available with ``nxarray.load()`` and *not* with ``nxr.load()``.
+Note that the ``nxr`` accessor for xarray objects will always be available with this naming, independently of the shorthand used when import nxarray.
