@@ -31,8 +31,8 @@ class _nxrDataset:
         '''
 
         ## Initialize NXentry
-        if "nxentry_name" in self._datset.attrs:
-            nxentry_name = self._datset.attrs["nxentry_name"]
+        if self._datset.attrs["NXtree"]._nxentry_name:
+            nxentry_name = self._datset.attrs["NXtree"]._nxentry_name
         else:
             nxentry_name = "entry"
         nxentry = nx.NXentry(name=nxentry_name)
@@ -40,12 +40,15 @@ class _nxrDataset:
         ## Add dataset attributes to NXentry
         _add_attrs(self._datset.attrs, nxentry)
 
-        # Add any other NeXus group to the dataset
-        if "NX" in self._datset.attrs:
-            for nxname, nxobject in self._datset.attrs["NX"].__dict__.items():
-                nxentry[nxname] = nxobject
+        # Add NeXus groups to the dataset
+        # (to be done before adding DataArrays in order
+        # to properly initialize NXdata groups)
+        if "NXtree" in self._datset.attrs:
+            for nxname, nxobject in self._datset.attrs["NXtree"].__dict__.items():
+                if isinstance(nxobject, nx.NXobject):
+                    nxentry[nxname] = nxobject
 
-        ## Add DataArrays as NXdata groups
+        ## Add DataArrays in NXdata groups
         self._add_nxdata(nxentry)
 
         return nxentry
@@ -64,9 +67,6 @@ class _nxrDataset:
                 nxdata_name = "data"
             if nxdata_name not in nxentry:
                 nxentry[nxdata_name] = nx.NXdata()
-            # Add NXdata attributes
-            if "nxgroup_attrs" in datarr.attrs:
-                _add_attrs(datarr.attrs["nxgroup_attrs"], nxentry[nxdata_name])
             # Get field path
             nxfield_path = nxdata_name + "/" + datarr.name
 
@@ -129,5 +129,5 @@ class _nxrDataset:
 
 def _add_attrs(attrs, nxfield):
     for k,v in attrs.items():
-        if k not in ["NX", "nxgroup", "nxgroup_attrs", "nxentry_name"]:
+        if k not in ["NXtree", "nxgroup"]:
             nxfield.attrs[k] = v

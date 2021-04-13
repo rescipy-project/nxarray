@@ -49,9 +49,6 @@ def _to_datarrs(nxdata):
             if isinstance(nxdata[entry], nx.NXlink):
                 datarr.attrs["target"] = nxdata[entry].nxlink.nxpath
 
-            # Add NXdata attributes reference
-            datarr.attrs["nxgroup_attrs"] = _get_attrs(nxdata)
-
             # Add signal datarr to data_vars list
             data_vars.append(datarr)
 
@@ -133,7 +130,7 @@ def to_datset(nxentry):
     
     This function convert the NXdata groups in the NXentry
     to DataArrays of an xarray Dataset.
-    Other groups in the NXentry are saved in the Dataset attribute "NX" as a dictionary.
+    Other groups in the NXentry are saved in the Dataset attribute "NXtree" as a dictionary.
     
     Arguments
         nxentry: NeXus NXentry to convert
@@ -153,7 +150,6 @@ def to_datset(nxentry):
 
     ## Add NXentry attributes to the Dataset
     ds.attrs = _get_attrs(nxentry)
-    ds.attrs["nxentry_name"] = nxentry.nxname
 
     ## Add NeXus objects to the Dataset
     NXobjects = dict()
@@ -165,10 +161,15 @@ def to_datset(nxentry):
                 ds[data_var.name] = data_var
             for coord in coords:
                 ds.coords[coord.name] = coord
+            # Initialize an empty placeholder NXdata with attributes
+            NXobjects[nxname] = nx.NXdata(name=nxobject.nxname, attrs=nxobject.attrs)
         else:
             # Retrieve other NeXus groups in a dictionary
             NXobjects[nxname] = nxobject
-    ds.attrs["NX"] = NXtree(NXobjects)
+    ds.attrs["NXtree"] = NXtree(NXobjects)
+
+    # Add NXentry name attribute
+    ds.attrs["NXtree"]._nxentry_name = nxentry.nxname
 
     return ds
 
@@ -199,7 +200,7 @@ def load(filename, entry=None):
     
     This function load the NXdata groups in the given NXentry
     of the NeXus file and return them as an xarray Dataset.
-    Other groups in the NXentry tree are saved in the Dataset attribute "NX".
+    Other groups in the NXentry tree are saved in the Dataset attribute "NXtree".
     Only one NXentry can be loaded from the NeXus file (by default the @default one).
     
     Arguments
@@ -232,9 +233,11 @@ class NXtree():
 
     def  __init__(self, d):
         self.__dict__ = d
+        self._nxentry_name = None
     
     def __str__(self):
-        items = len(self.__dict__)
+        # Number of items (does not account "_nxentry_name" item)
+        items = len(self.__dict__)-1
         return "NeXus tree ({} objects).".format(items)
 
     def __repr__(self):
