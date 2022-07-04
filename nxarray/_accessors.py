@@ -31,7 +31,7 @@ class _nxrDataset:
         '''
 
         ## Initialize NXentry
-        if self._datset.attrs["NXtree"]._nxentry_name:
+        if "NXtree" in self._datset.attrs:
             nxentry_name = self._datset.attrs["NXtree"]._nxentry_name
         else:
             nxentry_name = "entry"
