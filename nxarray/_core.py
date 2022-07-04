@@ -221,10 +221,17 @@ def load(filename, entry=None):
 
     # Get the nxentry and return it as an xarray dataset
     if entry:
-        nxentry = f[entry]
+        try:
+            nxentry = f[entry]
+        except KeyError:
+            print("No {} NXentry in the file.".format(entry))
+            return None
     else:
         # Get the nxentry relative to @default nxdata
         nxdata = f.plottable_data
+        if nxdata is None:
+            print("NeXus file is not valid.")
+            return None
         nxentry = nxdata.nxgroup
 
     return to_datset(nxentry)
