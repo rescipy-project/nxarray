@@ -2,7 +2,7 @@
 nxarray
 =======
 
-**xarray extension for NeXus input/output.**
+**A software package for NeXus/HDF5 conversion from and to Python xarray.**
 
 ``nxarray`` extends xarray *DataArrays* and *Datasets* with a high-level python interface for NeXus file input and output.
 
