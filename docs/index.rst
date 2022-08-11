@@ -4,7 +4,7 @@ nxarray
 
 **A software package for NeXus/HDF5 conversion from and to Python xarray.**
 
-``nxarray`` extends xarray *DataArrays* and *Datasets* with a high-level python interface for NeXus file input and output.
+``nxarray`` extends xarray *DataArrays* and *Datasets* with a high-level python interface for NeXus/HDF5 file input and output.
 
 
 .. toctree::
@@ -18,6 +18,8 @@ nxarray
 
 Motivations
 ===========
+
+`xarray <https://xarray.dev/>`_ is the most used Python package for labeled multi-dimensional data handling, providing convenient data structures (namely *DataArrays* and *Datasets*) and including a large library of functions for advanced analytics and visualization with these data structures.
 
 Despite xarray supports natively import/export of `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ (a file format designed to efficiently store and organize large amount of data), it does not provide an integrated interface to the `NeXus file format <https://www.nexusformat.org/>`_, the standard *de facto* for scientific data storage, based on HDF5 and increasingly adopted in `laboratories and large-scale facilities <https://www.nexusformat.org/Facilities.html>`_ all over the world.
 
