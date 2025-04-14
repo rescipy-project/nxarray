@@ -1,0 +1,33 @@
+[build-system]
+requires = [
+    "setuptools >= 64",
+    "xarray",
+    "nexusformat",
+    ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nxarray"
+dynamic = ["version"]
+authors = [
+  { name="Mirco Panighel", email="mirkopanighel@gmail.com" },
+]
+description = "xarray extension for NeXus input/output."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/nxarray/nxarray"
+Issues = "https://github.com/nxarray/nxarray/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "nxarray.__version__"}
