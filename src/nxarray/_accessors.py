@@ -7,7 +7,7 @@ class _nxrDataArray:
     '''
 
     def __init__(self, xarray_dataarray):
-        self._datarr = xarray_dataarray
+        self._da = xarray_dataarray
 
 @xr.register_dataset_accessor("nxr")
 class _nxrDataset:
@@ -15,7 +15,7 @@ class _nxrDataset:
     '''
 
     def __init__(self, xarray_dataset):
-        self._datset = xarray_dataset
+        self._ds = xarray_dataset
 
     def to_nxentry(self):
         ''' Convert xarray Dataset to NeXus NXentry
@@ -31,20 +31,20 @@ class _nxrDataset:
         '''
 
         ## Initialize NXentry
-        if "NXtree" in self._datset.attrs:
-            nxentry_name = self._datset.attrs["NXtree"]._nxentry_name
+        if "NXtree" in self._ds.attrs:
+            nxentry_name = self._ds.attrs["NXtree"]._nxentry_name
         else:
             nxentry_name = "entry"
         nxentry = nx.NXentry(name=nxentry_name)
 
         ## Add dataset attributes to NXentry
-        _add_attrs(self._datset.attrs, nxentry)
+        _add_attrs(self._ds.attrs, nxentry)
 
         # Add NeXus groups to the dataset
         # (to be done before adding DataArrays in order
         # to properly initialize NXdata groups)
-        if "NXtree" in self._datset.attrs:
-            for nxname, nxobject in self._datset.attrs["NXtree"].__dict__.items():
+        if "NXtree" in self._ds.attrs:
+            for nxname, nxobject in self._ds.attrs["NXtree"].__dict__.items():
                 if isinstance(nxobject, nx.NXobject):
                     nxentry[nxname] = nxobject
 
@@ -56,10 +56,10 @@ class _nxrDataset:
     def _add_nxdata(self, nxentry):
 
         ## Cycle over data variables and coordinates
-        if self._datset.variables:
-            for variable in self._datset.variables:
+        if self._ds.variables:
+            for variable in self._ds.variables:
 
-                datarr = self._datset[variable]
+                datarr = self._ds[variable]
 
                 ## Create NXdata group if not present
                 if "nxgroup" in datarr.attrs:
@@ -83,27 +83,27 @@ class _nxrDataset:
 
             ## Add @axes attribute to NXdata if not present
             if "axes" not in nxentry[nxdata_name].attrs:
-                nxentry[nxdata_name].attrs["axes"] = list(self._datset.dims)
+                nxentry[nxdata_name].attrs["axes"] = list(self._ds.dims)
 
             ## Add @signal attribute to NXdata if not present
             if "signal" not in nxentry[nxdata_name].attrs:
                 signal = ""
                 # Look for @signal attribute in data variables
-                for data_var in list(self._datset.data_vars):
-                    if "signal" in self._datset[data_var].attrs:
+                for data_var in list(self._ds.data_vars):
+                    if "signal" in self._ds[data_var].attrs:
                         signal = data_var
                 if signal == "":
                     # No @signal attributes found.
                     # Pick first data variable as signal
-                    signal = list(self._datset.data_vars)[0]
+                    signal = list(self._ds.data_vars)[0]
                 nxentry[nxdata_name].attrs["signal"] = signal
 
         ## Add @AXIS_indices attributes to NXdata if not present
-        if self._datset.coords.keys():
-            for coord in self._datset.coords.keys():
+        if self._ds.coords.keys():
+            for coord in self._ds.coords.keys():
                 if (coord+"_indices") not in nxentry[nxdata_name].attrs:
-                    for index, dim in enumerate(self._datset.dims):
-                        if self._datset[coord].dims[0] == dim:
+                    for index, dim in enumerate(self._ds.dims):
+                        if self._ds[coord].dims[0] == dim:
                             nxentry[nxdata_name].attrs[coord+"_indices"] = index
 
     def save(self, filename, **kwargs):
@@ -128,6 +128,14 @@ class _nxrDataset:
 
         ## Save to file
         nxentry.save(filename, **kwargs)
+
+@xr.register_datatree_accessor("nxr")
+class _nxrDataTree:
+    '''nxarray class extending xarray DataTree
+    '''
+
+    def __init__(self, xarray_datatree):
+        self._dt = xarray_datatree
 
 def _add_attrs(attrs, nxfield):
     for k,v in attrs.items():

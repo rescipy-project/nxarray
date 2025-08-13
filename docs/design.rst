@@ -2,7 +2,7 @@
 Design
 ======
 
-The architecture of a NeXus file resembles the structure of an xarray *Dataset*, with some important differences.
+The architecture of a NeXus file resembles the structure of xarray *DataTrees* and *Datasets*, with some important differences.
 In the following it is assumed the reader is familiar with the nomenclature of `xarray <http://xarray.pydata.org/en/stable/data-structures.html>`_ and `NeXus NXdata <https://manual.nexusformat.org/classes/base_classes/NXdata.html>`_.
 
 The following table summarize the correspondence brought by nxarray between NeXus and xarray objects and definitions.
@@ -10,6 +10,7 @@ The following table summarize the correspondence brought by nxarray between NeXu
 ====================    ====================
 NeXus                   xarray
 ====================    ====================
+``NXroot``              ``DataTree``
 ``NXentry``             ``Dataset.NXtree`` (*)
 ``NXdata.entries``      ``Dataset.data_vars, Dataset.coords`` (**)
 *signal*                *data variable*

@@ -196,45 +196,47 @@ def _get_attrs(nxfield):
     return attrs
 
 def load(filename, entry=None):
-    ''' Load a NeXus file to an xarray Dataset
+    ''' Load a NeXus file into an xarray DataTree
     
-    This function load the NXdata groups in the given NXentry
-    of the NeXus file and return them as an xarray Dataset.
+    This function load the NXdata groups in each NXentry of the NeXus file and
+    return them as an xarray Datasets of the DataTree.
     Other groups in the NXentry tree are saved in the Dataset attribute "NXtree".
-    Only one NXentry can be loaded from the NeXus file (by default the @default one).
     
     Arguments
         filename: file path to the NeXus file
-        entry (optional): name of the NXentry to be loaded. If None the @default NXentry will be loaded.
+        entry (optional): name of the NXentry to be loaded. If None, all NXentries will be loaded.
     
     Returns:
-        xarray Dataset
+        xarray DataTree
     
     Example:
         import nxarray as nxr
         
-        ds = nxr.load(path/to/file.nx)
+        dt = nxr.load(path/to/file.nxs)
     '''
 
     # Open NeXus file
     f = nx.nxload(filename)
 
-    # Get the nxentry and return it as an xarray dataset
+    #Initialise DataTree dictionary
+    dt_dict = dict()
+
     if entry:
+    # Get the Nxentry and return it as Dataset of the xarray DataTree
         try:
-            nxentry = f[entry]
+            dt_dict[entry] = to_datset(f[entry])
         except KeyError:
             print("No {} NXentry in the file.".format(entry))
-            return None
     else:
-        # Get the nxentry relative to @default nxdata
-        nxdata = f.plottable_data
-        if nxdata is None:
-            print("NeXus file is not valid.")
-            return None
-        nxentry = nxdata.nxgroup
+    # Load each Nxentry as a group of the xarray DataTree
+        for nxentry in f:
+            dt_dict[nxentry] = to_datset(f[nxentry])
 
-    return to_datset(nxentry)
+    # Create the dataTree from dictionary
+    dt = xr.DataTree.from_dict(dt_dict)
+    dt.attrs = f.attrs
+
+    return dt
 
 class NXtree():
 
